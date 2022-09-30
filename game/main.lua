@@ -5,16 +5,18 @@ require "input"
 require "localize"
 require "resources"
 require "scene_manager"
--- game_scene = require "scenes/game"
+game_scene = require "scenes/game"
 
-t = 0
 mouse_dx = 0
 mouse_dy = 0
 block_inputs = false
 
 function love.load()
     screen_w, screen_h = love.graphics.getDimensions()
-    love.graphics.setBackgroundColor(1, 1, 1)
+    love.graphics.setBackgroundColor(0, 0, 0)
+
+    register_scene('game', game_scene)
+    set_active_scene_by_name('game', 0)
 
     math.randomseed(os.time())
 end
@@ -54,7 +56,6 @@ end
 
 function love.update(dt)
     flux.update(dt)
-    t = t + dt
 
     if active_scene.update ~= nil then 
         active_scene.update(dt) 
@@ -71,9 +72,9 @@ function love.draw()
     love.graphics.setColor(0, 0, 0, scene_manager.fade_t)
     love.graphics.rectangle('fill', 0, 0, screen_w, screen_h)
 
-    if options.show_fps then
-        love.graphics.setFont(find_font('Sen-Regular.ttf', 14))
-        love.graphics.setColor(0, 0, 0, 1)
+    local show_fps = true
+    if show_fps then
+        love.graphics.setColor(1, 1, 1, 1)
         love.graphics.print('FPS: ' .. love.timer.getFPS(), 10, 10)
     end
 

@@ -254,6 +254,8 @@ function imgui.vslider(s) -- (y0, y1, x, value, notches)
     return s.value
 end
 
+local rotary_deferred_value = 0
+
 function imgui.rotary(s) -- (x, y, r, value, notches)
     local rotary_r = {x=s.x, y=s.y, w=s.r*2, h=s.r*2}
     local id = imgui.generate_id()
@@ -283,14 +285,13 @@ function imgui.rotary(s) -- (x, y, r, value, notches)
     -- love.graphics.rectangle('line', rotary_r.x, rotary_r.y, rotary_r.w, rotary_r.h)
 
     if mouse_in_rect and mouse_pressed(1) then
-        -- hack
-        rotary_mem = s.value 
+        rotary_deferred_value = s.value 
     end
 
     if imgui.active_id == id then
         local drag_r = s.r * 4
         local my = love.mouse.getY()
-        local dy = lume.clamp((imgui.press_y - my) / drag_r + rotary_mem, 0, 1)
+        local dy = lume.clamp((imgui.press_y - my) / drag_r + rotary_deferred_value, 0, 1)
         if s.notches ~= nil and s.notches > 1 then
             local scaled = lume.round(dy * (s.notches - 1))
             dy = scaled / (s.notches - 1)
