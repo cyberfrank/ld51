@@ -36,6 +36,7 @@ local head_dir = 0
 local head_dir_goal = 0
 local is_showdown = false
 local is_game_over = false
+local is_freeplay = false
 local misses = 0
 local current_level = 1
 local bg_col = '#201010'
@@ -297,7 +298,7 @@ function love.draw()
 	local xo, yo = draw_sequencer()
 	
 	love.graphics.setColor(lume.color(fg_col))
-	love.graphics.rectangle('fill', xo, 0, screen_w - xo, screen_h)
+	love.graphics.rectangle('fill', xo, 0, xo, screen_h)
 
 	love.graphics.setColor(lume.color(bg_col))
 	draw_guy(695, 70, goal_pattern, head_dir_goal)
@@ -308,6 +309,21 @@ function love.draw()
 		love.graphics.printf('ELIMINATED!', xo, yo, screen_w-xo, 'center')
 		love.graphics.setColor(1, 0, 0)
 		love.graphics.printf(misses .. ' MISSES', xo, yo + 40, screen_w-xo, 'center')
+		local button_w = 300
+		if imgui.button({
+			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=40},
+			text='> TRY AGAIN',
+			align='center',
+		}) then
+			reset()
+		end
+		if imgui.button({
+			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+150,w=button_w,h=40},
+			text='> FREEPLAY',
+			align='center',
+		}) then
+			is_freeplay = true
+		end
 	else
 		local text = is_showdown and 'NEXT LEVEL IN:' or 'SHOWDOWN IN:'
 		love.graphics.printf(text, xo, yo, screen_w-xo, 'center')
