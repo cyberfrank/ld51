@@ -4,6 +4,7 @@ imgui = require "imgui"
 require "input"
 require "localize"
 require "resources"
+require "level1"
 
 mouse_dx = 0
 mouse_dy = 0
@@ -15,16 +16,9 @@ local pattern = {
     {0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0},
+    {1,0,1,0,0,0,1,0},
 }
-local goal_pattern = {
-    {0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0},
-    {0,0,1,0,0,0,1,0},
-    {1,0,1,0,1,0,1,0},
-}
+local goal_pattern = {}
 
 local time = 0
 local cursor_t = 0
@@ -50,10 +44,13 @@ local head_dir_goal = 0
 local is_showdown = false
 local is_game_over = false
 local misses = 0
+local current_level = 1
+local bg_col = '#201010'
+local fg_col = '#fff0db'
 
 function love.load()
     screen_w, screen_h = love.graphics.getDimensions()
-    love.graphics.setBackgroundColor(0, 0, 0)
+    love.graphics.setBackgroundColor(lume.color(bg_col))
     
     local guy = find_image('guy.png')
     guy:setFilter('nearest', 'nearest')
@@ -80,6 +77,8 @@ function love.load()
 	}
 
     math.randomseed(os.time())
+
+	goal_pattern = level1_pattern[1]
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -130,6 +129,8 @@ function reset()
 	time = 0
 	total_beats = 0
 	last_beat = -1
+	current_level = 1
+	goal_pattern = level1_pattern[current_level]
 end
 
 function love.update(dt)
@@ -161,6 +162,11 @@ function love.update(dt)
 		total_beats = total_beats + 1
 		if total_beats % 32 == 0 then
 			check_is_game_over()
+		end
+		if total_beats % 64 == 0 and not is_game_over then
+			current_level = current_level + 1
+			goal_pattern = level1_pattern[current_level]
+			print('next level!')
 		end
 
 		is_showdown = math.ceil((total_beats % 64) / 32) % 2 == 0
@@ -210,18 +216,18 @@ function draw_sequencer()
 	local yo = 320
     local hh = (screen_h - yo - guide_pad)/#sound_sources
 
-	love.graphics.setColor(1, 1, 1)
+	love.graphics.setColor(lume.color(fg_col))
 	local guide = find_image('guide.png')
 	for y=0,#sound_sources-1 do
 		love.graphics.draw(guide, body_guide[y+1], xo, yo+y*hh+7, 0, 1, 1)
 	end
 
 	xo = xo + 46 + guide_pad
-	local ww = (screen_w-xo)/8/2
+	local ww = (screen_w/2 - xo)/8
 
     for y=0,#sound_sources-1 do
         for x=0,7 do
-            local pad = 3
+            local pad = 5
             local r = {
                 x=xo + ww*x + pad,
                 y=yo + y*hh + pad,
@@ -230,17 +236,17 @@ function draw_sequencer()
             }
 			local src = y+1
 			local slot = x+1
-            if imgui.update_control(imgui.generate_id(), r) and not is_showdown then
+            if imgui.update_control(imgui.generate_id(), r) then
                 pattern[src][slot] = pattern[src][slot] == 0 and 1 or 0
             end
 
-			love.graphics.setColor(1, 1, 1, 0.5)
+			love.graphics.setColor(lume.color(fg_col, 0.5))
 			love.graphics.rectangle('line', r.x, r.y, r.w, r.h)
 
             local fill = pattern[src][slot] ~= 0
 
 			if fill then
-				love.graphics.setColor(1, 1, 1, is_showdown and 0.5 or 1.0)
+				love.graphics.setColor(lume.color(fg_col, is_showdown and 0.5 or 1.0))
 				love.graphics.rectangle('fill', r.x, r.y, r.w, r.h)
 			end
 
@@ -259,18 +265,24 @@ function draw_sequencer()
     local cursor_x = lume.lerp(xo, ww*9, (time / period / 8) % 1)
     love.graphics.line(cursor_x, yo, cursor_x, screen_h - guide_pad)
 
-	return xo + ww*8, yo
+	return xo + ww*8 + guide_pad, yo
 end
 
 function love.draw()
     imgui.begin_frame(screen_w, screen_h)
 
-    draw_guy(220, 70, pattern, head_dir)
-    draw_guy(700, 70, goal_pattern, head_dir_goal)
+	love.graphics.setColor(lume.color(fg_col))
+    draw_guy(195, 70, pattern, head_dir)
     local xo, yo = draw_sequencer()
 	
+	love.graphics.setColor(lume.color(fg_col))
+	love.graphics.rectangle('fill', xo, 0, screen_w - xo, screen_h)
+
+	love.graphics.setColor(lume.color(bg_col))
+    draw_guy(695, 70, goal_pattern, head_dir_goal)
+	
 	love.graphics.setFont(find_font('pixel-font.ttf', 36))
-	love.graphics.setColor(1, 1, 1)
+	love.graphics.setColor(lume.color(bg_col))
 	if is_game_over then
 		love.graphics.printf('GAME OVER!', xo, yo, screen_w-xo, 'center')
 		love.graphics.setColor(1, 0, 0)
@@ -280,8 +292,9 @@ function love.draw()
 		love.graphics.printf(text, xo, yo, screen_w-xo, 'center')
 		local level_countdown = 4 - (math.ceil((total_beats % 64) / 8) - 1) % 4
 		love.graphics.printf(level_countdown, xo, yo + 40, screen_w-xo, 'center')
+		
 		love.graphics.setFont(find_font('pixel-font.ttf', 16))
-		local level_countdown_time = math.ceil(10 - time % 10)
+		local level_countdown_time = lume.round(10 - time % 10, 0.1)
 		love.graphics.printf(level_countdown_time .. ' sec', xo, yo + 80, screen_w-xo, 'center')
 	end
 
