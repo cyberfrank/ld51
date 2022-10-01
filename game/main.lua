@@ -298,7 +298,7 @@ function love.draw()
 	if is_game_over then
 		love.graphics.printf(want_to_reset and 'GET READY...' or 'GAME OVER!', xo, yo, screen_w-xo, 'center')
 		love.graphics.setColor(1, 0, 0)
-		love.graphics.printf(misses .. (misses == 1 and ' MISS' or ' MISSES'), xo, yo + 40, screen_w-xo, 'center')
+		love.graphics.printf(misses .. (misses == 1 and ' MISTAKE' or ' MISTAKES'), xo, yo + 40, screen_w-xo, 'center')
 		local button_w = 300
 		if imgui.button({
 			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
