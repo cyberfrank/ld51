@@ -330,6 +330,8 @@ function love.draw()
 		elseif current_level == 1 then
 			love.graphics.printf('COPY THE DRUM DANCE', xo, yo + 160, screen_w-xo, 'center')
 			love.graphics.printf('BEFORE THE SHOWDOWN!', xo, yo + 180, screen_w-xo, 'center')
+			love.graphics.setFont(find_font('pixel-font.ttf', 16))
+			love.graphics.printf('MADE FOR LUDUM DARE 51', xo, yo + 220, screen_w-xo, 'center')
 		end
 	end
 
