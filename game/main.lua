@@ -107,6 +107,9 @@ function love.keyreleased(key)
 end
 
 function check_is_game_over()
+	if is_game_over then return end
+	if is_showdown then return end
+
 	misses = 0
 	for y=1,#sound_sources do
 		for x=1,8 do
@@ -293,8 +296,8 @@ function love.draw()
 		local level_countdown = 4 - (math.ceil((total_beats % 64) / 8) - 1) % 4
 		love.graphics.printf(level_countdown, xo, yo + 40, screen_w-xo, 'center')
 		
-		love.graphics.setFont(find_font('pixel-font.ttf', 16))
-		local level_countdown_time = lume.round(10 - time % 10, 0.1)
+		love.graphics.setFont(find_font('pixel-font.ttf', 20))
+		local level_countdown_time = string.format("%.1f", 10 - time % 10)
 		love.graphics.printf(level_countdown_time .. ' sec', xo, yo + 80, screen_w-xo, 'center')
 	end
 
