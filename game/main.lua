@@ -1,13 +1,12 @@
 flux = require "lib/flux"
 lume = require "lib/lume"
-imgui = require "imgui"
 require "input"
 require "resources"
 require "level"
 
-mouse_dx = 0
-mouse_dy = 0
-block_inputs = false
+bg_col = '#201010'
+fg_col = '#fff0db'
+imgui = require "imgui"
 
 local pattern = {}
 local goal_pattern = {}
@@ -36,11 +35,8 @@ local head_dir = 0
 local head_dir_goal = 0
 local is_showdown = false
 local is_game_over = false
-local is_freeplay = false
 local misses = 0
 local current_level = 1
-local bg_col = '#201010'
-local fg_col = '#fff0db'
 
 function love.load()
 	screen_w, screen_h = love.graphics.getDimensions()
@@ -52,7 +48,6 @@ function love.load()
 	
 	local guy = find_image('guy.png')
 	guy:setFilter('nearest', 'nearest')
-
 	body_parts = {
 		love.graphics.newQuad(0, 0, 32, 32, guy), -- legs extended
 		love.graphics.newQuad(32, 0, 32, 32, guy), -- legs contracted
@@ -62,45 +57,31 @@ function love.load()
 		love.graphics.newQuad(96, 16, 20, 8, guy), -- hat
 		love.graphics.newQuad(144, 0, 16, 16, guy), -- heart
 	}
-
-	local guide = find_image('guide.png')
-	guide:setFilter('nearest', 'nearest')
 	body_guide = {
-		love.graphics.newQuad(0 * 46, 0, 46, 60, guide),
-		love.graphics.newQuad(1 * 46, 0, 46, 60, guide),
-		love.graphics.newQuad(2 * 46, 0, 46, 60, guide),
-		love.graphics.newQuad(3 * 46, 0, 46, 60, guide),
-		love.graphics.newQuad(4 * 46, 0, 46, 60, guide),
-		love.graphics.newQuad(5 * 46, 0, 46, 60, guide),
+		love.graphics.newQuad(0 * 46, 32, 46, 60, guy),
+		love.graphics.newQuad(1 * 46, 32, 46, 60, guy),
+		love.graphics.newQuad(2 * 46, 32, 46, 60, guy),
+		love.graphics.newQuad(3 * 46, 32, 46, 60, guy),
+		love.graphics.newQuad(4 * 46, 32, 46, 60, guy),
+		love.graphics.newQuad(5 * 46, 32, 46, 60, guy),
 	}
-
-	math.randomseed(os.time())
-
+	
 	reset()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
-	if block_inputs then return end
 	set_mouse_pressed(button)
 end
 
-function love.mousemoved(x, y, dx, dy, istouch)
-	mouse_dx = dx
-	mouse_dy = dy
-end
-
 function love.mousereleased(x, y, button, istouch, presses)
-	if block_inputs then return end
 	set_mouse_released(button)
 end
 
 function love.keypressed(key)
-	if block_inputs then return end
 	set_key_pressed(key)
 end
 
 function love.keyreleased(key)
-	if block_inputs then return end
 	set_key_released(key)
 end
 
@@ -139,6 +120,8 @@ function reset()
 	total_beats = 0
 	last_beat = -1
 	current_level = 1
+	head_dir = 0
+	head_dir_goal = 0
 	pattern = {
 		{0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0},
@@ -233,28 +216,28 @@ function draw_guy(x, y, sequence, head_dir)
 end
 
 function draw_sequencer()
-	local guide_pad = 6
-	local xo = guide_pad
+	local pad = 6
+	local xo = pad
 	local yo = 320
-	local hh = (screen_h - yo - guide_pad)/#sound_sources
+	local hh = (screen_h - yo - pad)/#sound_sources
 
 	love.graphics.setColor(lume.color(fg_col))
-	local guide = find_image('guide.png')
+	local guide = find_image('guy.png')
 	for y=0,#sound_sources-1 do
 		love.graphics.draw(guide, body_guide[y+1], xo, yo+y*hh+7, 0, 1, 1)
 	end
 
-	xo = xo + 46 + guide_pad
+	xo = xo + 46 + pad
 	local ww = (screen_w/2 - xo)/8
 
 	for y=0,#sound_sources-1 do
 		for x=0,7 do
-			local pad = 5
+			local inset = 5
 			local r = {
-				x=xo + ww*x + pad,
-				y=yo + y*hh + pad,
-				w=ww - pad * 2,
-				h=hh - pad * 2,
+				x=xo + ww*x + inset,
+				y=yo + y*hh + inset,
+				w=ww - inset * 2,
+				h=hh - inset * 2,
 			}
 			local src = y+1
 			local slot = x+1
@@ -285,9 +268,9 @@ function draw_sequencer()
 
 	love.graphics.setColor(0, 1, 0)
 	local cursor_x = lume.lerp(xo, ww*9, (time / period / 8) % 1)
-	love.graphics.line(cursor_x, yo, cursor_x, screen_h - guide_pad)
+	love.graphics.line(cursor_x, yo, cursor_x, screen_h - pad)
 
-	return xo + ww*8 + guide_pad, yo
+	return xo+ww*8+pad, yo
 end
 
 function love.draw()
@@ -311,18 +294,11 @@ function love.draw()
 		love.graphics.printf(misses .. ' MISSES', xo, yo + 40, screen_w-xo, 'center')
 		local button_w = 300
 		if imgui.button({
-			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=40},
+			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
 			text='> TRY AGAIN',
 			align='center',
 		}) then
 			reset()
-		end
-		if imgui.button({
-			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+150,w=button_w,h=40},
-			text='> FREEPLAY',
-			align='center',
-		}) then
-			is_freeplay = true
 		end
 	else
 		local text = is_showdown and 'NEXT LEVEL IN:' or 'SHOWDOWN IN:'
@@ -343,19 +319,12 @@ function love.draw()
 			for i=0,count-1 do
 				local x = xo + ww * i + (screen_w / 2 - ww * count) / 2
 				local part = next_body_parts[i + 1]
-				love.graphics.draw(find_image('guide.png'), body_guide[part], x, yo + 200)
+				love.graphics.draw(find_image('guy.png'), body_guide[part], x, yo + 200)
 			end
 		elseif current_level == 1 then
 			love.graphics.printf('COPY THE DRUM DANCE', xo, yo + 160, screen_w-xo, 'center')
 			love.graphics.printf('BEFORE THE SHOWDOWN!', xo, yo + 180, screen_w-xo, 'center')
 		end
-	end
-
-	love.graphics.setFont(find_font('pixel-font.ttf', 12))
-	love.graphics.setColor(1, 1, 1, 1)
-	local show_fps = true
-	if show_fps then
-		love.graphics.print('FPS: ' .. love.timer.getFPS(), 10, 10)
 	end
 
 	imgui.end_frame()
