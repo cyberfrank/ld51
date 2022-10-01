@@ -106,16 +106,16 @@ function love.update(dt)
         if #sources_to_play > 0 then love.audio.play(sources_to_play) end
         last_beat = beat
         
+
         if pattern[3][beat] ~= 0 then 
-            head_dir = head_dir + 1 
+            head_dir = head_dir + 1
         end
         if goal_pattern[3][beat] ~= 0 then 
-            head_dir_goal = head_dir_goal + 1 
+            head_dir_goal = head_dir_goal + 1
         end
 
         beat_local_time = 0
     end
-    time=0
 end
 
 function draw_guy(x, y, sequence, head_dir)
