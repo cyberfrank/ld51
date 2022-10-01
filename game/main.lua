@@ -21,7 +21,7 @@ local pattern = {
 local goal_pattern = {
     {0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0},
-    {0,1,0,1,0,1,0,1},
+    {0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0},
     {0,0,1,0,0,0,1,0},
     {1,0,1,0,1,0,1,0},
@@ -32,8 +32,9 @@ local cursor_t = 0
 local last_update_time = 0
 local last_beat = 0
 local beat_local_time = 0
+local total_beats = 0
 -- 96BPM is 10sec
-local bpm = 120
+local bpm = 96
 local period = 60 / bpm / 2
 local sound_sources = {
     find_sound('Drumtraks-Cabasa-7.wav'),
@@ -44,6 +45,7 @@ local sound_sources = {
     find_sound('Drumtraks-Bass-4.wav'),
 }
 local body_parts = {}
+local body_guide = {}
 local head_dir = 0
 local head_dir_goal = 0
 
@@ -61,7 +63,19 @@ function love.load()
         love.graphics.newQuad(64, 0, 14, 17, guy), -- arm
         love.graphics.newQuad(96, 0, 16, 13, guy), -- head
         love.graphics.newQuad(96, 16, 20, 8, guy), -- hat
+		love.graphics.newQuad(144, 0, 16, 16, guy), -- heart
     }
+
+	local guide = find_image('guide.png')
+	guide:setFilter('nearest', 'nearest')
+	body_guide = {
+		love.graphics.newQuad(0 * 46, 0, 46, 60, guide),
+		love.graphics.newQuad(1 * 46, 0, 46, 60, guide),
+		love.graphics.newQuad(2 * 46, 0, 46, 60, guide),
+		love.graphics.newQuad(3 * 46, 0, 46, 60, guide),
+		love.graphics.newQuad(4 * 46, 0, 46, 60, guide),
+		love.graphics.newQuad(5 * 46, 0, 46, 60, guide),
+	}
 
     math.randomseed(os.time())
 end
@@ -94,7 +108,13 @@ end
 function love.update(dt)
     flux.update(dt)
 
-    beat_local_time = beat_local_time + dt
+	if key_pressed('r') then
+		time = 0
+		total_beats = 0
+		last_beat = -1
+	end
+
+	beat_local_time = beat_local_time + dt
     time = time + dt
 
     beat = math.floor(time / period) % 8 + 1
@@ -105,7 +125,6 @@ function love.update(dt)
         end
         if #sources_to_play > 0 then love.audio.play(sources_to_play) end
         last_beat = beat
-        
 
         if pattern[3][beat] ~= 0 then 
             head_dir = head_dir + 1
@@ -113,6 +132,12 @@ function love.update(dt)
         if goal_pattern[3][beat] ~= 0 then 
             head_dir_goal = head_dir_goal + 1
         end
+
+		total_beats = total_beats + 1
+
+		if (total_beats % 64) == 0 then
+			-- introduce next level
+		end
 
         beat_local_time = 0
     end
@@ -131,7 +156,11 @@ function draw_guy(x, y, sequence, head_dir)
     local legs_offset = (duck and 1 or 5) * scale
     love.graphics.translate(0, -legs_offset)
     -- torso
+	local heart = sequence[1][beat] ~= 0 and not cooldown
     love.graphics.draw(guy, body_parts[3], x + 20, y - 5, 0, scale, scale)
+	if heart then
+		love.graphics.draw(guy, body_parts[7], x + 20, y - 5, 0, scale, scale)
+	end
     -- arms
     local r_arm_up = sequence[5][beat] ~= 0 and not cooldown
     local l_arm_up = sequence[4][beat] ~= 0 and not cooldown
@@ -142,45 +171,72 @@ function draw_guy(x, y, sequence, head_dir)
     love.graphics.draw(guy, body_parts[5], x + 44, y - 41, 0, dir, scale, 8, 0)
     -- hat
     local bump = sequence[2][beat] ~= 0 and not cooldown
-    love.graphics.draw(guy, body_parts[6], x + 44, y - 70 - (bump and 20 or 0), 0, dir, scale, 8, 0)
+    love.graphics.draw(guy, body_parts[6], x + 44, y - 70 - (bump and 30 or 0), 0, dir, scale, 8, 0)
 
     love.graphics.pop()
     love.graphics.pop()
 end
 
 function draw_sequencer()
-    local ww = screen_w/9
-    local hh = screen_h/2/8
-    for y=1,6 do
-        for x=1,8 do
+	local guide_pad = 6
+	local xo = guide_pad
+	local yo = 320
+    local hh = (screen_h - yo - guide_pad)/#sound_sources
+
+	love.graphics.setColor(1, 1, 1)
+	local guide = find_image('guide.png')
+	for y=0,#sound_sources-1 do
+		love.graphics.draw(guide, body_guide[y+1], xo, yo+y*hh+7, 0, 1, 1)
+	end
+
+	xo = xo + 46 + guide_pad
+	local ww = (screen_w-xo)/8/2
+
+    for y=0,#sound_sources-1 do
+        for x=0,7 do
             local pad = 3
             local r = {
-                x=ww*x + pad,
-                y=screen_h/2-hh+y*hh + pad,
+                x=xo + ww*x + pad,
+                y=yo + y*hh + pad,
                 w=ww - pad * 2,
                 h=hh - pad * 2,
             }
+			local src = y+1
+			local slot = x+1
             if imgui.update_control(imgui.generate_id(), r) then
-                pattern[y][x] = pattern[y][x] == 0 and 1 or 0
+                pattern[src][slot] = pattern[src][slot] == 0 and 1 or 0
             end
-            local fill = pattern[y][x] ~= 0
+            local fill = pattern[src][slot] ~= 0
             love.graphics.setColor(1, 1, 1, fill and 1 or 0.5)
             love.graphics.rectangle(fill and 'fill' or 'line', r.x, r.y, r.w, r.h)
         end
     end
 
     love.graphics.setColor(1, 1, 0)
-    local cursor_x = lume.lerp(ww, screen_w, (time / period / 8) % 1)
-    love.graphics.line(cursor_x, screen_h/2, cursor_x, screen_h-hh*2)
+    local cursor_x = lume.lerp(xo, ww*9, (time / period / 8) % 1)
+    love.graphics.line(cursor_x, yo, cursor_x, screen_h - guide_pad)
+
+	return xo + ww*8, yo
 end
 
 function love.draw()
     imgui.begin_frame(screen_w, screen_h)
 
-    draw_guy(150, 50, pattern, head_dir)
-    draw_guy(450, 50, goal_pattern, head_dir_goal)
-    draw_sequencer()
+    draw_guy(220, 70, pattern, head_dir)
+    draw_guy(700, 70, goal_pattern, head_dir_goal)
+    local xo, yo = draw_sequencer()
 
+	love.graphics.setColor(1, 1, 1)
+	love.graphics.setFont(find_font('pixel-font.ttf', 36))
+	love.graphics.printf('NEXT LEVEL IN:', xo, yo, screen_w-xo, 'center')
+	local level_countdown = 4 - (math.ceil((total_beats % 64) / 8) - 1) % 4
+	love.graphics.printf(level_countdown, xo, yo + 40, screen_w-xo, 'center')
+	
+	love.graphics.setFont(find_font('pixel-font.ttf', 16))
+	local level_countdown_time = math.ceil(10 - time % 10)
+	love.graphics.printf(level_countdown_time .. ' sec', xo, yo + 80, screen_w-xo, 'center')
+
+	love.graphics.setFont(find_font('pixel-font.ttf', 12))
     local show_fps = true
     if show_fps then
         love.graphics.setColor(1, 1, 1, 1)
