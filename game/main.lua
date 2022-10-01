@@ -26,7 +26,7 @@ local last_update_time = 0
 local last_beat = 0
 local beat_local_time = 0
 local total_beats = 0
--- 96BPM is 10sec
+-- 96bpm = 10sec
 local bpm = 96
 local period = 60 / bpm / 2
 local sound_sources = {
@@ -111,9 +111,6 @@ function love.keyreleased(key)
 end
 
 function check_is_game_over()
-	if is_game_over then return end
-	if is_showdown then return end
-
 	misses = 0
 	for y=1,#sound_sources do
 		for x=1,8 do
@@ -167,18 +164,16 @@ function love.update(dt)
 			head_dir_goal = head_dir_goal + 1
 		end
 		
-		if total_beats > 0 and total_beats % 64 == 0 then
-			check_is_game_over()
-
-			if not is_game_over then
-				current_level = current_level + 1
-				goal_pattern = level1_pattern[current_level]
-				print('next level!')
-			end
+		if total_beats > 0 and total_beats % 32 == 0 then
+			check_is_game_over()	
 		end
-		
-		total_beats = total_beats + 1
 
+		if not is_game_over and total_beats > 0 and total_beats % 64 == 0 then
+			current_level = current_level + 1
+			goal_pattern = level1_pattern[current_level]
+		end
+
+		total_beats = total_beats + 1
 		is_showdown = math.ceil((total_beats % 64) / 32) % 2 == 0
 		is_showdown = is_showdown or is_game_over
 
@@ -306,6 +301,18 @@ function love.draw()
 		love.graphics.setFont(find_font('pixel-font.ttf', 20))
 		local level_countdown_time = string.format("%.1f", 10 - time % 10)
 		love.graphics.printf(level_countdown_time .. ' sec', xo, yo + 80, screen_w-xo, 'center')
+
+		if true then
+			love.graphics.setFont(find_font('pixel-font.ttf', 26))
+			love.graphics.printf('UP NEXT:', xo, yo + 160, screen_w-xo, 'center')
+			love.graphics.setFont(find_font('pixel-font.ttf', 16))
+			local count = 2
+			local ww = 52
+			for i=0,count-1 do
+				local x = xo + ww * i + (screen_w / 2 - ww * count) / 2
+				love.graphics.draw(find_image('guide.png'), body_guide[i + 1], x, yo + 200)
+			end
+		end
 	end
 
 	love.graphics.setFont(find_font('pixel-font.ttf', 12))
