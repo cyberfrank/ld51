@@ -2,22 +2,14 @@ flux = require "lib/flux"
 lume = require "lib/lume"
 imgui = require "imgui"
 require "input"
-require "localize"
 require "resources"
-require "level1"
+require "level"
 
 mouse_dx = 0
 mouse_dy = 0
 block_inputs = false
 
-local pattern = {
-	{0,0,0,0,0,0,0,0},
-	{0,0,0,0,0,0,0,0},
-	{0,0,0,0,0,0,0,0},
-	{0,0,0,0,0,0,0,0},
-	{0,0,0,0,0,0,0,0},
-	{1,0,1,0,0,0,1,0},
-}
+local pattern = {}
 local goal_pattern = {}
 
 local time = 0
@@ -39,6 +31,7 @@ local sound_sources = {
 }
 local body_parts = {}
 local body_guide = {}
+local next_body_parts = {}
 local head_dir = 0
 local head_dir_goal = 0
 local is_showdown = false
@@ -82,7 +75,7 @@ function love.load()
 
 	math.randomseed(os.time())
 
-	goal_pattern = level1_pattern[1]
+	reset()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -110,6 +103,22 @@ function love.keyreleased(key)
 	set_key_released(key)
 end
 
+function update_next_body_parts()
+	local curr_pattern = level_pattern[current_level]
+	local next_level = current_level + 1 > #level_pattern and 1 or current_level + 1
+	local next_pattern = level_pattern[next_level]
+	next_body_parts = {}
+
+	for y=1,#sound_sources do
+		for x=1,8 do
+			if next_pattern[y][x] ~= curr_pattern[y][x] then
+				lume.push(next_body_parts, y)
+				break
+			end
+		end
+	end
+end
+
 function check_is_game_over()
 	misses = 0
 	for y=1,#sound_sources do
@@ -123,18 +132,21 @@ function check_is_game_over()
 end
 
 function reset()
-	for y=1,#sound_sources do
-		for x=1,8 do
-			pattern[y][x] = 0
-		end
-	end
 	is_game_over = false
 	is_showdown = false
 	time = 0
 	total_beats = 0
 	last_beat = -1
 	current_level = 1
-	goal_pattern = level1_pattern[current_level]
+	pattern = {
+		{0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0},
+		{1,0,1,0,0,0,1,0},
+	}
+	goal_pattern = level_pattern[current_level]
 end
 
 function love.update(dt)
@@ -165,12 +177,16 @@ function love.update(dt)
 		end
 		
 		if total_beats > 0 and total_beats % 32 == 0 then
-			check_is_game_over()	
+			check_is_game_over()
+			update_next_body_parts()
 		end
 
 		if not is_game_over and total_beats > 0 and total_beats % 64 == 0 then
 			current_level = current_level + 1
-			goal_pattern = level1_pattern[current_level]
+			if current_level > #level_pattern then
+				current_level = 1
+			end
+			goal_pattern = level_pattern[current_level]
 		end
 
 		total_beats = total_beats + 1
@@ -241,7 +257,7 @@ function draw_sequencer()
 			}
 			local src = y+1
 			local slot = x+1
-			if imgui.update_control(imgui.generate_id(), r) then
+			if imgui.update_control(imgui.generate_id(), r) and not is_showdown then
 				pattern[src][slot] = pattern[src][slot] == 0 and 1 or 0
 			end
 
@@ -289,7 +305,7 @@ function love.draw()
 	love.graphics.setFont(find_font('pixel-font.ttf', 36))
 	love.graphics.setColor(lume.color(bg_col))
 	if is_game_over then
-		love.graphics.printf('GAME OVER!', xo, yo, screen_w-xo, 'center')
+		love.graphics.printf('ELIMINATED!', xo, yo, screen_w-xo, 'center')
 		love.graphics.setColor(1, 0, 0)
 		love.graphics.printf(misses .. ' MISSES', xo, yo + 40, screen_w-xo, 'center')
 	else
@@ -302,16 +318,20 @@ function love.draw()
 		local level_countdown_time = string.format("%.1f", 10 - time % 10)
 		love.graphics.printf(level_countdown_time .. ' sec', xo, yo + 80, screen_w-xo, 'center')
 
-		if true then
-			love.graphics.setFont(find_font('pixel-font.ttf', 26))
+		love.graphics.setFont(find_font('pixel-font.ttf', 26))
+		if is_showdown then
 			love.graphics.printf('UP NEXT:', xo, yo + 160, screen_w-xo, 'center')
 			love.graphics.setFont(find_font('pixel-font.ttf', 16))
-			local count = 2
+			local count = #next_body_parts
 			local ww = 52
 			for i=0,count-1 do
 				local x = xo + ww * i + (screen_w / 2 - ww * count) / 2
-				love.graphics.draw(find_image('guide.png'), body_guide[i + 1], x, yo + 200)
+				local part = next_body_parts[i + 1]
+				love.graphics.draw(find_image('guide.png'), body_guide[part], x, yo + 200)
 			end
+		elseif current_level == 1 then
+			love.graphics.printf('COPY THE DRUM DANCE', xo, yo + 160, screen_w-xo, 'center')
+			love.graphics.printf('BEFORE THE SHOWDOWN!', xo, yo + 180, screen_w-xo, 'center')
 		end
 	end
 
