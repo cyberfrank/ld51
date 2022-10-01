@@ -35,6 +35,7 @@ local head_dir = 0
 local head_dir_goal = 0
 local is_showdown = false
 local is_game_over = false
+local want_to_reset = false
 local misses = 0
 local current_level = 1
 
@@ -66,7 +67,7 @@ function love.load()
 		love.graphics.newQuad(5 * 46, 32, 46, 60, guy),
 	}
 	
-	reset()
+	reset_game()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -113,9 +114,10 @@ function check_is_game_over()
 	is_game_over = misses ~= 0
 end
 
-function reset()
+function reset_game()
 	is_game_over = false
 	is_showdown = false
+	want_to_reset = false
 	time = 0
 	total_beats = 0
 	last_beat = -1
@@ -137,7 +139,7 @@ function love.update(dt)
 	flux.update(dt)
 
 	if key_pressed('r') then
-		reset()
+		want_to_reset = true
 	end
 
 	beat_local_time = beat_local_time + dt
@@ -163,6 +165,10 @@ function love.update(dt)
 		if total_beats > 0 and total_beats % 32 == 0 then
 			check_is_game_over()
 			update_next_body_parts()
+		end
+
+		if want_to_reset and beat == 1 then
+			reset_game()
 		end
 
 		if not is_game_over and total_beats > 0 and total_beats % 64 == 0 then
@@ -289,16 +295,16 @@ function love.draw()
 	love.graphics.setFont(find_font('pixel-font.ttf', 36))
 	love.graphics.setColor(lume.color(bg_col))
 	if is_game_over then
-		love.graphics.printf('ELIMINATED!', xo, yo, screen_w-xo, 'center')
+		love.graphics.printf(want_to_reset and 'GET READY...' or 'GAME OVER!', xo, yo, screen_w-xo, 'center')
 		love.graphics.setColor(1, 0, 0)
-		love.graphics.printf(misses .. ' MISSES', xo, yo + 40, screen_w-xo, 'center')
+		love.graphics.printf(misses .. (misses == 1 and ' MISS' or ' MISSES'), xo, yo + 40, screen_w-xo, 'center')
 		local button_w = 300
 		if imgui.button({
 			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
 			text='> TRY AGAIN',
 			align='center',
 		}) then
-			reset()
+			want_to_reset = true
 		end
 	else
 		local text = is_showdown and 'NEXT LEVEL IN:' or 'SHOWDOWN IN:'
