@@ -16,7 +16,7 @@ local cursor_t = 0
 local last_update_time = 0
 local last_beat = 0
 local beat_local_time = 0
-local total_beats = 0
+local num_beats = 0
 -- 96bpm = 10sec
 local bpm = 96
 local period = 60 / bpm / 2
@@ -119,7 +119,8 @@ function reset_game()
 	is_showdown = false
 	want_to_reset = false
 	time = 0
-	total_beats = 0
+	num_beats = 0
+	beat = 0
 	last_beat = -1
 	current_level = 1
 	head_dir = 0
@@ -154,6 +155,7 @@ function love.update(dt)
 		lume.push(sources_to_play, find_sound('metronome.wav'))
 		if #sources_to_play > 0 then love.audio.play(sources_to_play) end
 		last_beat = beat
+		num_beats = num_beats + 1
 
 		if pattern[3][beat] ~= 0 then 
 			head_dir = head_dir + 1
@@ -162,27 +164,26 @@ function love.update(dt)
 			head_dir_goal = head_dir_goal + 1
 		end
 		
-		if total_beats > 0 and total_beats % 32 == 0 then
+		if num_beats > 1 and ((num_beats-1) % 32 == 0) then
 			check_is_game_over()
 			update_next_body_parts()
 		end
-
+		
 		if want_to_reset and beat == 1 then
 			reset_game()
 		end
-
-		if not is_game_over and total_beats > 0 and total_beats % 64 == 0 then
+		
+		if not is_game_over and num_beats > 1 and (num_beats-1) % 64 == 0 then
 			current_level = current_level + 1
 			if current_level > #level_pattern then
 				current_level = 1
 			end
 			goal_pattern = level_pattern[current_level]
 		end
-
-		total_beats = total_beats + 1
-		is_showdown = math.ceil((total_beats % 64) / 32) % 2 == 0
+	
+		is_showdown = math.ceil(num_beats / 32) % 2 == 0
 		is_showdown = is_showdown or is_game_over
-
+		
 		beat_local_time = 0
 	end
 end
@@ -309,7 +310,7 @@ function love.draw()
 	else
 		local text = is_showdown and 'NEXT LEVEL IN:' or 'SHOWDOWN IN:'
 		love.graphics.printf(text, xo, yo, screen_w-xo, 'center')
-		local level_countdown = 32 - (math.ceil((total_beats % 64) / 1) - 1) % 32
+		local level_countdown = 32 - ((num_beats-1) % 32)
 		love.graphics.printf(level_countdown, xo, yo + 40, screen_w-xo, 'center')
 		
 		love.graphics.setFont(find_font('pixel-font.ttf', 20))
