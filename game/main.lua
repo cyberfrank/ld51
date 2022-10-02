@@ -1,4 +1,5 @@
 lume = require "lib/lume"
+lovebpm = require "lib/lovebpm"
 require "input"
 require "resources"
 require "level"
@@ -10,15 +11,8 @@ imgui = require "imgui"
 local pattern = {}
 local goal_pattern = {}
 
-local time = 0
-local cursor_t = 0
-local last_update_time = 0
-local last_beat = 0
-local beat_local_time = 0
+local beat_x = 1
 local num_beats = 0
--- 96bpm = 10sec
-local bpm = 96
-local period = 60 / bpm / 2
 local sound_sources = {
 	find_sound('Drumtraks-Cabasa-7.wav'),
 	find_sound('Drumtraks-Cowbell-7.wav'),
@@ -26,16 +20,6 @@ local sound_sources = {
 	find_sound('Drumtraks-Claps-7.wav'),
 	find_sound('Drumtraks-Snare-4.wav'),
 	find_sound('Drumtraks-Bass-4.wav'),
-}
-local music_sources = {
-	find_sound('section_a.wav'),
-	find_sound('section_b.wav'),
-	find_sound('section_c.wav'),
-	find_sound('section_d.wav'),
-	find_sound('section_e.wav'),
-	find_sound('section_f.wav'),
-	find_sound('section_g.wav'),
-	find_sound('section_h_special.wav'),
 }
 local body_parts = {}
 local body_guide = {}
@@ -51,13 +35,6 @@ local current_level = 1
 function love.load()
 	screen_w, screen_h = love.graphics.getDimensions()
 	love.graphics.setBackgroundColor(lume.color(bg_col))
-
-	local metronome = find_sound('metronome.wav')
-	metronome:setVolume(0.2)
-	metronome:setPitch(1.5)
-
-	local intro = find_sound('intro.wav')
-	intro:setVolume(1.0)
 	
 	local guy = find_image('guy.png')
 	guy:setFilter('nearest', 'nearest')
@@ -78,6 +55,15 @@ function love.load()
 		love.graphics.newQuad(4 * 46, 32, 46, 60, guy),
 		love.graphics.newQuad(5 * 46, 32, 46, 60, guy),
 	}
+	
+	music = lovebpm.newTrack()
+	music:load('data/sounds/backingtrack.wav')
+	-- 96bpm = 10sec
+	music:setBPM(96*2)
+	music:setLooping(true)
+	music:on('beat', on_beat)
+	music:play()
+	
 	reset_game()
 end
 
@@ -129,10 +115,7 @@ function reset_game()
 	is_game_over = false
 	is_showdown = false
 	want_to_reset = false
-	time = 0
 	num_beats = 0
-	beat = 0
-	last_beat = -1
 	current_level = 1
 	head_dir = 0
 	head_dir_goal = 0
@@ -145,66 +128,56 @@ function reset_game()
 		{1,0,1,0,0,0,1,0},
 	}
 	goal_pattern = level_pattern[current_level]
+	music:setTime(0.0)
+	music:setVolume(1.0)
+end
+
+function on_beat(beat)
+	beat_x = (beat % 8) + 1
+
+	local sources_to_play = {}
+	for i=1,#sound_sources do
+		if pattern[i][beat_x] ~= 0 then lume.push(sources_to_play, sound_sources[i]) end
+	end
+	if #sources_to_play > 0 then love.audio.play(sources_to_play) end
+	num_beats = num_beats + 1
+
+	if pattern[3][beat_x] ~= 0 then 
+		head_dir = head_dir + 1
+	end
+	if goal_pattern[3][beat_x] ~= 0 then 
+		head_dir_goal = head_dir_goal + 1
+	end
+
+	if want_to_reset and beat_x == 1 then
+		reset_game()
+	end
+
+	if not is_game_over and num_beats > 1 then
+		if beat % 64 == 32 then
+			print('check is_game_over')
+			check_is_game_over()
+			update_next_body_parts()
+			if is_game_over then
+				music:setVolume(0.0)
+			end
+		end
+		if beat % 64 == 0 then
+			print('goto next level')
+			current_level = current_level + 1
+			if current_level > #level_pattern then
+				current_level = 1
+			end
+			goal_pattern = level_pattern[current_level]
+		end
+	end
+
+	is_showdown = math.ceil(num_beats / 32) % 2 == 0
+	is_showdown = is_showdown or is_game_over
 end
 
 function love.update(dt)
-	dt = math.min(dt, 1 / 60)
-
-	if key_pressed('r') then
-		want_to_reset = true
-	end
-
-	beat_local_time = beat_local_time + dt
-	time = time + dt
-
-	beat = math.floor(time / period) % 8 + 1
-	if last_beat ~= beat then
-		local sources_to_play = {}
-		for i=1,#sound_sources do
-			if pattern[i][beat] ~= 0 then lume.push(sources_to_play, sound_sources[i]) end
-		end
-		lume.push(sources_to_play, find_sound('metronome.wav'))
-		if #sources_to_play > 0 then love.audio.play(sources_to_play) end
-		last_beat = beat
-		num_beats = num_beats + 1
-
-		if pattern[3][beat] ~= 0 then 
-			head_dir = head_dir + 1
-		end
-		if goal_pattern[3][beat] ~= 0 then 
-			head_dir_goal = head_dir_goal + 1
-		end
-		
-		if want_to_reset and beat == 1 then
-			reset_game()
-		end
-
-		if not is_game_over and num_beats > 1 then
-			if ((num_beats-1) % 64 == 24) then
-				love.audio.play(find_sound('intro.wav'))
-			end
-			if ((num_beats-1) % 64 == 32) then
-				check_is_game_over()
-				update_next_body_parts()
-				if not is_game_over then
-					local idx = (current_level - 1) % #music_sources
-					love.audio.play(music_sources[idx + 1])
-				end
-			end
-			if (num_beats-1) % 64 == 0 then
-				current_level = current_level + 1
-				if current_level > #level_pattern then
-					current_level = 1
-				end
-				goal_pattern = level_pattern[current_level]
-			end
-		end
-	
-		is_showdown = math.ceil(num_beats / 32) % 2 == 0
-		is_showdown = is_showdown or is_game_over
-		
-		beat_local_time = 0
-	end
+	music:update()
 end
 
 function draw_guy(x, y, sequence, head_dir)
@@ -212,29 +185,30 @@ function draw_guy(x, y, sequence, head_dir)
 	love.graphics.translate(25, 86)
 	local guy = find_image('guy.png')
 	local scale = 3
-	local cooldown = beat_local_time > 0.6 * period
-	local duck = sequence[6][beat] ~= 0 and not cooldown
+	local _, subbeat = music:getBeat()
+	local cooldown = subbeat > 0.6
+	local duck = sequence[6][beat_x] ~= 0 and not cooldown
 	love.graphics.draw(guy, body_parts[duck and 2 or 1], x, y, 0, scale, scale)
 
 	love.graphics.push()
 	local legs_offset = (duck and 1 or 5) * scale
 	love.graphics.translate(0, -legs_offset)
 	-- torso
-	local heart = sequence[1][beat] ~= 0 and not cooldown
+	local heart = sequence[1][beat_x] ~= 0 and not cooldown
 	love.graphics.draw(guy, body_parts[3], x + 20, y - 5, 0, scale, scale)
 	if heart then
 		love.graphics.draw(guy, body_parts[7], x + 20, y - 5, 0, scale, scale)
 	end
 	-- arms
-	local r_arm_up = sequence[5][beat] ~= 0 and not cooldown
-	local l_arm_up = sequence[4][beat] ~= 0 and not cooldown
+	local r_arm_up = sequence[5][beat_x] ~= 0 and not cooldown
+	local l_arm_up = sequence[4][beat_x] ~= 0 and not cooldown
 	love.graphics.draw(guy, body_parts[4], x + 72, y + 16, 0, scale, r_arm_up and -scale or scale, 0, 3)
 	love.graphics.draw(guy, body_parts[4], x + 16, y + 16, 0, -scale, l_arm_up and -scale or scale, 0, 3)
 	-- head
 	local dir = head_dir % 2 == 0 and scale or -scale
 	love.graphics.draw(guy, body_parts[5], x + 44, y - 41, 0, dir, scale, 8, 0)
 	-- hat
-	local bump = sequence[2][beat] ~= 0 and not cooldown
+	local bump = sequence[2][beat_x] ~= 0 and not cooldown
 	love.graphics.draw(guy, body_parts[6], x + 44, y - 70 - (bump and 30 or 0), 0, dir, scale, 8, 0)
 
 	love.graphics.pop()
@@ -255,6 +229,8 @@ function draw_sequencer()
 
 	xo = xo + 46 + pad
 	local ww = (screen_w/2 - xo)/8
+
+	local beat, subbeat = music:getBeat()
 
 	for y=0,#sound_sources-1 do
 		for x=0,7 do
@@ -283,8 +259,8 @@ function draw_sequencer()
 
 			local is_miss = pattern[src][slot] ~= goal_pattern[src][slot]
 			if is_showdown and (fill or is_miss) then
-				local is_on_beat = (beat - 1) == x
-				local alpha = is_on_beat and 1.0 - beat_local_time or 0.0
+				local is_on_beat = (beat_x - 1) == x
+				local alpha = is_on_beat and 1.0 - subbeat or 0.0
 				local beat_color = is_miss and '#ff0000' or '#00ff00'
 				love.graphics.setColor(lume.color(beat_color, alpha))
 				love.graphics.rectangle('fill', r.x, r.y, r.w, r.h)
@@ -292,8 +268,9 @@ function draw_sequencer()
 		end
 	end
 
+	local cursor_t = (beat / 8 + subbeat / 8) % 1
 	love.graphics.setColor(0, 1, 0)
-	local cursor_x = lume.lerp(xo, ww*9, (time / period / 8) % 1)
+	local cursor_x = lume.lerp(xo, ww*9, cursor_t)
 	love.graphics.line(cursor_x, yo, cursor_x, screen_h - pad)
 
 	return xo+ww*8+pad, yo
@@ -333,7 +310,8 @@ function love.draw()
 		love.graphics.printf(level_countdown, xo, yo + 40, screen_w-xo, 'center')
 		
 		love.graphics.setFont(find_font('pixel-font.ttf', 20))
-		local level_countdown_time = string.format("%.1f", 10 - time % 10)
+		local track_time = music:getTime()
+		local level_countdown_time = string.format("%.1f", 10 - track_time % 10)
 		love.graphics.printf(level_countdown_time .. ' sec', xo, yo + 80, screen_w-xo, 'center')
 
 		love.graphics.setFont(find_font('pixel-font.ttf', 26))
