@@ -57,7 +57,7 @@ function love.load()
 	}
 	
 	music = lovebpm.newTrack()
-	music:load('data/sounds/backingtrack.wav')
+	music:load('data/sounds/backingtrack.ogg')
 	-- 96bpm = 10sec
 	music:setBPM(96*2)
 	music:setLooping(true)
