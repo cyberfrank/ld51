@@ -28,8 +28,14 @@ local sound_sources = {
 	find_sound('Drumtraks-Bass-4.wav'),
 }
 local music_sources = {
-	find_sound('background1.wav'),
-	find_sound('background2.wav'),
+	find_sound('section_a.wav'),
+	find_sound('section_b.wav'),
+	find_sound('section_c.wav'),
+	find_sound('section_d.wav'),
+	find_sound('section_e.wav'),
+	find_sound('section_f.wav'),
+	find_sound('section_g.wav'),
+	find_sound('section_h_special.wav'),
 }
 local body_parts = {}
 local body_guide = {}
@@ -49,6 +55,9 @@ function love.load()
 	local metronome = find_sound('metronome.wav')
 	metronome:setVolume(0.2)
 	metronome:setPitch(1.5)
+
+	local intro = find_sound('intro.wav')
+	intro:setVolume(1.0)
 	
 	local guy = find_image('guy.png')
 	guy:setFilter('nearest', 'nearest')
@@ -171,12 +180,15 @@ function love.update(dt)
 		end
 
 		if not is_game_over and num_beats > 1 then
+			if ((num_beats-1) % 64 == 24) then
+				love.audio.play(find_sound('intro.wav'))
+			end
 			if ((num_beats-1) % 64 == 32) then
 				check_is_game_over()
 				update_next_body_parts()
 				if not is_game_over then
-					local idx = love.math.random(#music_sources)
-					love.audio.play(music_sources[idx])
+					local idx = (current_level - 1) % #music_sources
+					love.audio.play(music_sources[idx + 1])
 				end
 			end
 			if (num_beats-1) % 64 == 0 then
@@ -335,11 +347,13 @@ function love.draw()
 				local part = next_body_parts[i + 1]
 				love.graphics.draw(find_image('guy.png'), body_guide[part], x, yo + 200)
 			end
-		elseif current_level == 1 then
+		else
 			love.graphics.printf('COPY THE DRUM DANCE', xo, yo + 160, screen_w-xo, 'center')
 			love.graphics.printf('BEFORE THE SHOWDOWN!', xo, yo + 180, screen_w-xo, 'center')
-			love.graphics.setFont(find_font('pixel-font.ttf', 16))
-			love.graphics.printf('MADE FOR LUDUM DARE 51', xo, yo + 220, screen_w-xo, 'center')
+			if current_level == 1 then
+				love.graphics.setFont(find_font('pixel-font.ttf', 16))
+				love.graphics.printf('MADE FOR LUDUM DARE 51', xo, yo + 220, screen_w-xo, 'center')
+			end
 		end
 	end
 
