@@ -1,4 +1,3 @@
-flux = require "lib/flux"
 lume = require "lib/lume"
 require "input"
 require "resources"
@@ -27,6 +26,10 @@ local sound_sources = {
 	find_sound('Drumtraks-Claps-7.wav'),
 	find_sound('Drumtraks-Snare-4.wav'),
 	find_sound('Drumtraks-Bass-4.wav'),
+}
+local music_sources = {
+	find_sound('background1.wav'),
+	find_sound('background2.wav'),
 }
 local body_parts = {}
 local body_guide = {}
@@ -66,7 +69,6 @@ function love.load()
 		love.graphics.newQuad(4 * 46, 32, 46, 60, guy),
 		love.graphics.newQuad(5 * 46, 32, 46, 60, guy),
 	}
-	
 	reset_game()
 end
 
@@ -137,7 +139,7 @@ function reset_game()
 end
 
 function love.update(dt)
-	flux.update(dt)
+	dt = math.min(dt, 1 / 60)
 
 	if key_pressed('r') then
 		want_to_reset = true
@@ -164,21 +166,26 @@ function love.update(dt)
 			head_dir_goal = head_dir_goal + 1
 		end
 		
-		if num_beats > 1 and ((num_beats-1) % 32 == 0) then
-			check_is_game_over()
-			update_next_body_parts()
-		end
-		
 		if want_to_reset and beat == 1 then
 			reset_game()
 		end
-		
-		if not is_game_over and num_beats > 1 and (num_beats-1) % 64 == 0 then
-			current_level = current_level + 1
-			if current_level > #level_pattern then
-				current_level = 1
+
+		if not is_game_over and num_beats > 1 then
+			if ((num_beats-1) % 64 == 32) then
+				check_is_game_over()
+				update_next_body_parts()
+				if not is_game_over then
+					local idx = love.math.random(#music_sources)
+					love.audio.play(music_sources[idx])
+				end
 			end
-			goal_pattern = level_pattern[current_level]
+			if (num_beats-1) % 64 == 0 then
+				current_level = current_level + 1
+				if current_level > #level_pattern then
+					current_level = 1
+				end
+				goal_pattern = level_pattern[current_level]
+			end
 		end
 	
 		is_showdown = math.ceil(num_beats / 32) % 2 == 0
