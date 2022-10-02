@@ -11,7 +11,7 @@ imgui = require "imgui"
 local pattern = {}
 local goal_pattern = {}
 
-local beat_x = 1
+local beat_x = 0
 local num_beats = 0
 local sound_sources = {
 	find_sound('Drumtraks-Cabasa-7.wav'),
@@ -116,9 +116,10 @@ function reset_game()
 	is_showdown = false
 	want_to_reset = false
 	num_beats = 0
-	current_level = 1
 	head_dir = 0
 	head_dir_goal = 0
+	misses = 0
+	current_level = 1
 	pattern = {
 		{0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0},
@@ -155,7 +156,6 @@ function on_beat(beat)
 
 	if not is_game_over and num_beats > 1 then
 		if beat % 64 == 32 then
-			print('check is_game_over')
 			check_is_game_over()
 			update_next_body_parts()
 			if is_game_over then
@@ -163,7 +163,6 @@ function on_beat(beat)
 			end
 		end
 		if beat % 64 == 0 then
-			print('goto next level')
 			current_level = current_level + 1
 			if current_level > #level_pattern then
 				current_level = 1
