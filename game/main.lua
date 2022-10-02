@@ -102,7 +102,7 @@ function update_next_body_parts()
     end
 end
 
-function check_is_game_over()
+function update_is_game_over()
     misses = 0
     for y=1,#sound_sources do
         for x=1,8 do
@@ -160,7 +160,7 @@ function on_beat(beat)
 
     if not is_game_over and num_beats > 1 then
         if beat % 64 == 32 then
-            check_is_game_over()
+            update_is_game_over()
             update_next_body_parts()
             if is_game_over then
                 music:setVolume(0.0)
