@@ -1,5 +1,5 @@
 @echo off
-set name=ld49
+set name=ld51
 7z a game.zip .\game\*
 ren game.zip game.love
 copy /b %LOVE_DIR%\love.exe+game.love %name%.exe && del game.love
