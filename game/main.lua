@@ -2,7 +2,7 @@ lume = require "lib/lume"
 lovebpm = require "lib/lovebpm"
 require "input"
 require "resources"
-require "level"
+require "levels"
 
 bg_col = '#201010'
 fg_col = '#fff0db'
@@ -14,12 +14,12 @@ local goal_pattern = {}
 local beat_x = 0
 local num_beats = 0
 local sound_sources = {
-	find_sound('Drumtraks-Cabasa-7.wav'),
-	find_sound('Drumtraks-Cowbell-7.wav'),
-	find_sound('Drumtraks-Closed-4.wav'),
-	find_sound('Drumtraks-Claps-7.wav'),
-	find_sound('Drumtraks-Snare-4.wav'),
-	find_sound('Drumtraks-Bass-4.wav'),
+	find_sound('cabasa.wav'),
+	find_sound('cowbell.wav'),
+	find_sound('hihat.wav'),
+	find_sound('claps.wav'),
+	find_sound('snare.wav'),
+	find_sound('kick.wav'),
 }
 local body_parts = {}
 local body_guide = {}
@@ -35,6 +35,9 @@ local current_level = 1
 function love.load()
 	screen_w, screen_h = love.graphics.getDimensions()
 	love.graphics.setBackgroundColor(lume.color(bg_col))
+
+	local metronome = find_sound('metronome.wav')
+	metronome:setVolume(0.4)
 	
 	local guy = find_image('guy.png')
 	guy:setFilter('nearest', 'nearest')
@@ -84,9 +87,9 @@ function love.keyreleased(key)
 end
 
 function update_next_body_parts()
-	local curr_pattern = level_pattern[current_level]
-	local next_level = current_level + 1 > #level_pattern and 1 or current_level + 1
-	local next_pattern = level_pattern[next_level]
+	local curr_pattern = level_patterns[current_level]
+	local next_level = current_level + 1 > #level_patterns and 1 or current_level + 1
+	local next_pattern = level_patterns[next_level]
 	next_body_parts = {}
 
 	for y=1,#sound_sources do
@@ -128,9 +131,9 @@ function reset_game()
 		{0,0,0,0,0,0,0,0},
 		{1,0,1,0,0,0,1,0},
 	}
-	goal_pattern = level_pattern[current_level]
+	goal_pattern = level_patterns[current_level]
 	music:setTime(0.0)
-	music:setVolume(1.0)
+	music:setVolume(0.6)
 end
 
 function on_beat(beat)
@@ -140,7 +143,8 @@ function on_beat(beat)
 	for i=1,#sound_sources do
 		if pattern[i][beat_x] ~= 0 then lume.push(sources_to_play, sound_sources[i]) end
 	end
-	if #sources_to_play > 0 then love.audio.play(sources_to_play) end
+	lume.push(sources_to_play, find_sound('metronome.wav'))
+	love.audio.play(sources_to_play)
 	num_beats = num_beats + 1
 
 	if pattern[3][beat_x] ~= 0 then 
@@ -164,10 +168,10 @@ function on_beat(beat)
 		end
 		if beat % 64 == 0 then
 			current_level = current_level + 1
-			if current_level > #level_pattern then
+			if current_level > #level_patterns then
 				current_level = 1
 			end
-			goal_pattern = level_pattern[current_level]
+			goal_pattern = level_patterns[current_level]
 		end
 	end
 
@@ -295,7 +299,7 @@ function love.draw()
 		love.graphics.setColor(1, 0, 0)
 		love.graphics.printf(misses .. (misses == 1 and ' MISTAKE' or ' MISTAKES'), xo, yo + 40, screen_w-xo, 'center')
 		local button_w = 300
-		if imgui.button({
+		if not want_to_reset and imgui.button({
 			rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
 			text='> TRY AGAIN',
 			align='center',
@@ -329,7 +333,8 @@ function love.draw()
 			love.graphics.printf('BEFORE THE SHOWDOWN!', xo, yo + 180, screen_w-xo, 'center')
 			if current_level == 1 then
 				love.graphics.setFont(find_font('pixel-font.ttf', 16))
-				love.graphics.printf('MADE FOR LUDUM DARE 51', xo, yo + 220, screen_w-xo, 'center')
+				love.graphics.printf('MADE BY PHILIP STENMARK', xo, yo + 220, screen_w-xo, 'center')
+				love.graphics.printf('FOR LUDUM DARE 51', xo, yo + 235, screen_w-xo, 'center')
 			end
 		end
 	end
