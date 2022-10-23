@@ -67,7 +67,7 @@ function love.load()
     music:on('beat', on_beat)
     music:play()
     
-    reset_game()
+    reset_game(1)
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -114,7 +114,7 @@ function update_is_game_over()
     is_game_over = misses ~= 0
 end
 
-function reset_game()
+function reset_game(level)
     is_game_over = false
     is_showdown = false
     want_to_reset = false
@@ -122,17 +122,19 @@ function reset_game()
     head_dir = 0
     head_dir_goal = 0
     misses = 0
-    current_level = 1
-    pattern = {
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {1,0,1,0,0,0,1,0},
-    }
-    goal_pattern = level_patterns[current_level]
-    music:setTime(0.0)
+    current_level = level
+    if level == 1 then
+        pattern = {
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {1,0,1,0,0,0,1,0},
+        }
+    end
+    goal_pattern = level_patterns[level]
+    music:setBeat(((level - 1) % 8) * 64, 0)
     music:setVolume(0.6)
 end
 
@@ -155,7 +157,7 @@ function on_beat(beat)
     end
 
     if want_to_reset and beat_x == 1 then
-        reset_game()
+        reset_game(current_level)
     end
 
     if not is_game_over and num_beats > 1 then
