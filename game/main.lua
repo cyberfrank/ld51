@@ -264,14 +264,13 @@ function draw_sequencer()
                 pattern[src][slot] = pattern[src][slot] == 0 and 1 or 0
             end
 
-            love.graphics.setColor(lume.color(fg_col, 0.5))
-            love.graphics.rectangle('line', r.x, r.y, r.w, r.h)
-
             local fill = pattern[src][slot] ~= 0
-
             if fill then
                 love.graphics.setColor(lume.color(fg_col, can_use and 1.0 or 0.5))
                 love.graphics.rectangle('fill', r.x, r.y, r.w, r.h)
+            else
+                love.graphics.setColor(lume.color(fg_col, 0.5))
+                love.graphics.rectangle('line', r.x, r.y, r.w, r.h)
             end
 
             local is_miss = pattern[src][slot] ~= goal_pattern[src][slot]
