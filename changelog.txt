@@ -1,2 +1,7 @@
 Version 1.0.0
 - Original release
+
+Version 1.1.0
+- Restart at current level instead of the very beginning
+- Add endless free play mode (jam mode)
+- Minor visual fixes
