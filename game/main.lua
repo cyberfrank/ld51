@@ -29,6 +29,8 @@ local head_dir_goal = 0
 local is_showdown = false
 local is_game_over = false
 local want_to_reset = false
+local want_to_free_play = false
+local free_play = false
 local misses = 0
 local current_level = 1
 
@@ -117,7 +119,9 @@ end
 function reset_game(level)
     is_game_over = false
     is_showdown = false
+    free_play = false
     want_to_reset = false
+    want_to_free_play = false
     num_beats = 0
     head_dir = 0
     head_dir_goal = 0
@@ -154,6 +158,13 @@ function on_beat(beat)
     end
     if goal_pattern[3][beat_x] ~= 0 then 
         head_dir_goal = head_dir_goal + 1
+    end
+
+    if want_to_free_play and beat_x == 1 then
+        music:setBeat(32)
+        music:setVolume(0.6)
+        free_play = true
+        want_to_free_play = false
     end
 
     if want_to_reset and beat_x == 1 then
@@ -248,7 +259,8 @@ function draw_sequencer()
             }
             local src = y+1
             local slot = x+1
-            if imgui.update_control(imgui.generate_id(), r) and not is_showdown then
+            local can_use = not is_showdown or free_play
+            if imgui.update_control(imgui.generate_id(), r) and can_use then
                 pattern[src][slot] = pattern[src][slot] == 0 and 1 or 0
             end
 
@@ -258,12 +270,12 @@ function draw_sequencer()
             local fill = pattern[src][slot] ~= 0
 
             if fill then
-                love.graphics.setColor(lume.color(fg_col, is_showdown and 0.5 or 1.0))
+                love.graphics.setColor(lume.color(fg_col, can_use and 1.0 or 0.5))
                 love.graphics.rectangle('fill', r.x, r.y, r.w, r.h)
             end
 
             local is_miss = pattern[src][slot] ~= goal_pattern[src][slot]
-            if is_showdown and (fill or is_miss) then
+            if is_showdown and (fill or is_miss) and not free_play then
                 local is_on_beat = (beat_x - 1) == x
                 local alpha = is_on_beat and 1.0 - subbeat or 0.0
                 local beat_color = is_miss and '#ff0000' or '#00ff00'
@@ -292,21 +304,45 @@ function love.draw()
     love.graphics.rectangle('fill', xo, 0, xo, screen_h)
 
     love.graphics.setColor(lume.color(bg_col))
-    draw_guy(695, 70, goal_pattern, head_dir_goal)
+    draw_guy(695, 70, free_play and pattern or goal_pattern, free_play and head_dir or head_dir_goal)
     
     love.graphics.setFont(find_font('pixel-font.ttf', 36))
     love.graphics.setColor(lume.color(bg_col))
-    if is_game_over then
-        love.graphics.printf(want_to_reset and 'GET READY...' or 'GAME OVER!', xo, yo, screen_w-xo, 'center')
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.printf(misses .. (misses == 1 and ' MISTAKE' or ' MISTAKES'), xo, yo + 40, screen_w-xo, 'center')
-        local button_w = 300
-        if not want_to_reset and imgui.button({
-            rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
-            text='> TRY AGAIN',
-            align='center',
-        }) then
-            want_to_reset = true
+    local button_w = 300
+    if is_game_over and not free_play then
+        local show_buttons = not want_to_reset and not want_to_free_play
+        love.graphics.printf(show_buttons and 'GAME OVER!' or 'GET READY...', xo, yo, screen_w-xo, 'center')
+        if show_buttons then
+            love.graphics.setColor(1, 0, 0)
+            love.graphics.printf(misses .. (misses == 1 and ' MISTAKE' or ' MISTAKES'), xo, yo + 40, screen_w-xo, 'center')
+            if imgui.button({
+                rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
+                text='> TRY AGAIN',
+                align='center',
+            }) then
+                want_to_reset = true
+            end
+            if imgui.button({
+                rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100+60+10,w=button_w,h=60},
+                text='> JAM MODE',
+                align='center',
+            }) then
+                want_to_free_play = true
+            end
+        end
+    elseif free_play then
+        local show_buttons = not want_to_reset and not want_to_free_play
+        love.graphics.printf(show_buttons and '>> JAM MODE <<' or 'EXITING...', xo, yo, screen_w-xo, 'center')
+        if show_buttons then
+            love.graphics.printf('ENJOY ENDLESS', xo, yo + 40, screen_w-xo, 'center')
+            if imgui.button({
+                rect={x=xo+(screen_w-xo-button_w)/2,y=yo+100,w=button_w,h=60},
+                text='> NORMAL MODE',
+                align='center',
+            }) then
+                current_level = 1
+                want_to_reset = true
+            end
         end
     else
         local text = is_showdown and 'NEXT LEVEL IN:' or 'SHOWDOWN IN:'
